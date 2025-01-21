@@ -42,7 +42,7 @@ print(nrow(ea_pgi)) #167781
 
 # Select relevant variables and rename
 ea_pgi <- ea_pgi %>%
-	select(project_pseudo_id, EA4_Meta_PGI,
+	select(project_pseudo_id, UGLI_Sample, EA4_Meta_PGI,
 	EA4_Meta_Mother_PGI, EA4_Meta_Mother_PGI_Imp, EA4_Meta_Father_PGI, EA4_Meta_Father_PGI_Imp, 
 	EA4_Meta_PGI_Parental,
 	EA3NonCog_PGI, EA3Cog_PGI, 
@@ -186,7 +186,7 @@ within_fam_ea_pgi <- within_fam_ea_pgi %>%
     id, mom_id, dad_id,
     
     # Demographics and family info
-    GENDER1M2F, fam_id, partner_id, 
+    GENDER1M2F, fam_id, partner_id, UGLI_Sample,
     date_of_birth, year_of_birth, month_of_birth, date_of_inclusion,
     date_of_birth_m, year_of_birth_m, month_of_birth_m, n_child_m, years_at_birth_m,
     date_of_birth_f, year_of_birth_f, month_of_birth_f, n_child_f, years_at_birth_f,
