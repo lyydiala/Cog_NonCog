@@ -21,6 +21,14 @@ library(ggplot2)     # Plotting
 # Load dataset
 final_df <- fread("/groups/umcg-lifelines/tmp01/projects/ov21_0226/lalajaasko/dfs/final_df.csv", sep=",", header=TRUE) %>%
   as.data.frame()
+  
+covariates <- c("age_at_inclusion", "year_of_birth", "wave")
+final_df <- final_df %>%
+  group_by(source) %>%
+  mutate(across(all_of(covariates), ~ (. - mean(.,na.rm=TRUE)) / sd(.,na.rm=TRUE), .names = "{.col}_std")) %>%
+  ungroup()
+final_df <- final_df %>%
+  mutate(female_ctd = female - mean(female, na.rm = TRUE))
 
 # Filter data by source type
 final_df_cbcl <- final_df %>% filter(source == "cbcl")
@@ -194,7 +202,7 @@ generate_pgi_plots <- function(results_df, samples, types, terms, output_dir, co
 ## Should I include also sex-age interaction?
 
 # Define control variables
-control_vars <- c("female","age_at_inclusion", "year_of_birth", "years_at_birth_m", "n_child_m", "fam_id", "wave", 
+control_vars <- c("female_ctd","age_at_inclusion_std", "year_of_birth_std", "wave_std", 
                   "pc1", "pc2", "pc3", "pc4", "pc5", "pc6", "pc7", "pc8", "pc9", "pc10")
 controls <- paste(control_vars, collapse = " + ")
 
