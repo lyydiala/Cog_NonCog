@@ -921,7 +921,7 @@ length(unique(cbcl_w1$project_pseudo_id))
 print(nrow(cbcl_w2)) #5526
 length(unique(cbcl_w2$project_pseudo_id)) 
 print(nrow(cbcl_w3)) #468
-length(unique(cbcl_w3$project_pseudo_id)) 
+length(unique(cbcl_w3$project_pseudo_id))
 
 # Save into separate data frames
 write.table(cbcl_w1,"/groups/umcg-lifelines/tmp01/projects/ov21_0226/lalajaasko/dfs/cbcl_w1.csv",

@@ -3,7 +3,7 @@
 # Description: Code to combine data and define final sample								
 #########################################################################
 
-module load R/4.2.2-foss-2022a-bare
+module load RPlus
 R
 library(data.table)
 library(dplyr) 
@@ -13,34 +13,34 @@ library(dplyr)
 ## Load relevant dataframes to R
 
 # CBCL
-cbcl_w1 <- fread("/groups/umcg-lifelines/tmp01/projects/ov21_0226/lalajaasko/dfs/cbcl_w1.csv", 
+cbcl_w1 <- fread("/groups/umcg-lifelines/tmp02/projects/ov21_0226/lalajaasko/dfs/cbcl_w1.csv", 
 	sep=",", header=TRUE)
 cbcl_w1 <- as.data.frame(cbcl_w1)
-cbcl_w2 <- fread("/groups/umcg-lifelines/tmp01/projects/ov21_0226/lalajaasko/dfs/cbcl_w2.csv", 
+cbcl_w2 <- fread("/groups/umcg-lifelines/tmp02/projects/ov21_0226/lalajaasko/dfs/cbcl_w2.csv", 
 	sep=",", header=TRUE)
 cbcl_w2 <- as.data.frame(cbcl_w2)
-cbcl_w3 <- fread("/groups/umcg-lifelines/tmp01/projects/ov21_0226/lalajaasko/dfs/cbcl_w3.csv", 
+cbcl_w3 <- fread("/groups/umcg-lifelines/tmp02/projects/ov21_0226/lalajaasko/dfs/cbcl_w3.csv", 
 	sep=",", header=TRUE)
 cbcl_w3 <- as.data.frame(cbcl_w3)
 
 # YSR
-ysr_w1 <- fread("/groups/umcg-lifelines/tmp01/projects/ov21_0226/lalajaasko/dfs/ysr_w1.csv", 
+ysr_w1 <- fread("/groups/umcg-lifelines/tmp02/projects/ov21_0226/lalajaasko/dfs/ysr_w1.csv", 
 	sep=",", header=TRUE)
 ysr_w1 <- as.data.frame(ysr_w1)
-ysr_w2 <- fread("/groups/umcg-lifelines/tmp01/projects/ov21_0226/lalajaasko/dfs/ysr_w2.csv", 
+ysr_w2 <- fread("/groups/umcg-lifelines/tmp02/projects/ov21_0226/lalajaasko/dfs/ysr_w2.csv", 
 	sep=",", header=TRUE)
 ysr_w2 <- as.data.frame(ysr_w2)
-ysr_w3 <- fread("/groups/umcg-lifelines/tmp01/projects/ov21_0226/lalajaasko/dfs/ysr_w3.csv", 
+ysr_w3 <- fread("/groups/umcg-lifelines/tmp02/projects/ov21_0226/lalajaasko/dfs/ysr_w3.csv", 
 	sep=",", header=TRUE)
 ysr_w3 <- as.data.frame(ysr_w3)
 
 # FAD 
-fad <- fread("/groups/umcg-lifelines/tmp01/projects/ov21_0226/lalajaasko/dfs/fad.csv",
+fad <- fread("/groups/umcg-lifelines/tmp02/projects/ov21_0226/lalajaasko/dfs/fad.csv",
 	sep=",", header=TRUE)
 fad <- as.data.frame(fad)
 
 # Within-family EA-PGI
-within_fam_ea_pgi <- fread("/groups/umcg-lifelines/tmp01/projects/ov21_0226/lalajaasko/dfs/within_fam_ea_pgi.csv", 
+within_fam_ea_pgi <- fread("/groups/umcg-lifelines/tmp02/projects/ov21_0226/lalajaasko/dfs/within_fam_ea_pgi.csv", 
 	sep=",", header=TRUE)
 within_fam_ea_pgi <- as.data.frame(within_fam_ea_pgi)
 
@@ -69,7 +69,7 @@ behavior <- behavior %>%
     externalising = rowSums(across(c(aggressive, delinquent)), na.rm = TRUE))
 	
 # Save data frame
-write.table(behavior,"/groups/umcg-lifelines/tmp01/projects/ov21_0226/lalajaasko/dfs/behavior.csv",
+write.table(behavior,"/groups/umcg-lifelines/tmp02/projects/ov21_0226/lalajaasko/dfs/behavior.csv",
 	sep=",",row.names=FALSE,quote=FALSE)
 	
 #########################################################################
@@ -100,12 +100,66 @@ combined_df <- combined_df %>%
 print(nrow(combined_df)) #7692
 length(unique(combined_df$id)) #3960
 
+# Of which none imputed
+imputed_0 <- combined_df %>%
+	filter(is.na(ea4_pgi_f_imp),is.na(ea4_pgi_m_imp))
+print(nrow(imputed_0)) #1473
+length(unique(imputed_0$id)) #764
+
+# Of which mother imputed
+imputed_m <- combined_df %>%
+	filter(is.na(ea4_pgi_f_imp),!is.na(ea4_pgi_m_imp))
+print(nrow(imputed_m)) #2080
+length(unique(imputed_m$id)) #1088
+
+# Of which father imputed
+imputed_f <- combined_df %>%
+	filter(!is.na(ea4_pgi_f_imp),is.na(ea4_pgi_m_imp))
+print(nrow(imputed_f)) # 2407
+length(unique(imputed_f$id)) #1226
+
+# Of which both imputed
+imputed_2 <- combined_df %>%
+	filter(!is.na(ea4_pgi_f_imp),!is.na(ea4_pgi_m_imp))
+print(nrow(imputed_2)) #1732
+length(unique(imputed_2$id)) #882
+
+# Count frequency of each individual in the final sample
+id_freq <- table(combined_df$id)
+
+# Number of individuals observed only once
+n_once <- sum(id_freq == 1)
+
+# Number of individuals observed more than once
+n_more_than_once <- sum(id_freq > 1)
+
+# Total unique individuals
+n_unique <- length(id_freq)
+
+# Proportions
+prop_once <- n_once / n_unique
+prop_more_than_once <- n_more_than_once / n_unique
+
+# Output
+cat("Observed only once:", n_once, "\n")
+cat("Observed more than once:", n_more_than_once, "\n")
+cat("Proportion observed only once:", round(prop_once, 3), "\n")
+cat("Proportion observed more than once:", round(prop_more_than_once, 3), "\n")
+
+# Count how many individuals are observed more than twice
+n_more_than_twice <- sum(id_freq > 2)
+
+# Also get the proportion
+prop_more_than_twice <- n_more_than_twice / length(id_freq)
+
+# Output
+cat("Observed more than twice:", n_more_than_twice, "\n")
+cat("Proportion observed more than twice:", round(prop_more_than_twice, 3), "\n")
+
 # Save data frame
-write.table(combined_df,"/groups/umcg-lifelines/tmp01/projects/ov21_0226/lalajaasko/dfs/combined_df.csv",
+write.table(combined_df,"/groups/umcg-lifelines/tmp02/projects/ov21_0226/lalajaasko/dfs/combined_df.csv",
 	sep=",",row.names=FALSE,quote=FALSE)
 	
-#########################################################################
-
 #########################################################################
 
 ## CHECK OVERLAP IN IDS: UNDERSTANDING REPEATED OBSERVATIONS

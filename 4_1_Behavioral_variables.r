@@ -13,7 +13,7 @@ library(lubridate)
 #########################################################################
 
 # Load full sample onto R
-combined_df <- fread("/groups/umcg-lifelines/tmp01/projects/ov21_0226/lalajaasko/dfs/combined_df.csv", 
+combined_df <- fread("/groups/umcg-lifelines/tmp02/projects/ov21_0226/lalajaasko/dfs/combined_df.csv", 
 	sep=",", header=TRUE)
 
 #########################################################################
@@ -75,7 +75,7 @@ final_df <- final_df %>%
 
 # Save data frame
 
-write.table(final_df,"/groups/umcg-lifelines/tmp01/projects/ov21_0226/lalajaasko/dfs/final_df.csv",
+write.table(final_df,"/groups/umcg-lifelines/tmp02/projects/ov21_0226/lalajaasko/dfs/final_df.csv",
 	sep=",",row.names=FALSE,quote=FALSE)
 
 #########################################################################

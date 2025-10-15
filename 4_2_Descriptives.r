@@ -3,7 +3,7 @@
 # Description: Generating descriptives						
 #########################################################################
 
-module load R/4.2.2-foss-2022a-bare
+module load RPlus
 R
 
 library(dplyr)
@@ -17,11 +17,11 @@ library(writexl)
 #########################################################################
 
 # Full data frame
-final_df <- fread("/groups/umcg-lifelines/tmp01/projects/ov21_0226/lalajaasko/dfs/final_df.csv", 
+final_df <- fread("/groups/umcg-lifelines/tmp02/projects/ov21_0226/lalajaasko/dfs/final_df.csv", 
 	sep=",", header=TRUE)
 
 # Define output directory 
-output_dir <- "/groups/umcg-lifelines/tmp01/projects/ov21_0226/lalajaasko/descriptives/"
+output_dir <- "/groups/umcg-lifelines/tmp02/projects/ov21_0226/lalajaasko/descriptives/"
 
 #########################################################################
 
@@ -109,7 +109,13 @@ for (sample in samples) {
       scale_fill_manual(values = c("Raw" = "blue", "Standardised" = "orange")) +
       labs(
         x = "Score",
-        y = "Density"
+        y = "Density",
+		axis.text.x = element_text(size = 12),  # x-axis labels
+		axis.text.y = element_text(size = 12),                         # y-axis labels
+		axis.title.y = element_text(size = 12),                        # y-axis title
+		legend.text = element_text(size = 12),                         # legend labels
+		legend.title = element_text(size = 12),                        # legend title
+
       ) +
       theme_minimal()
     
@@ -151,8 +157,8 @@ for (sample in samples) {
         legend.position = "none",
         axis.title.y = element_text(size = 12),
         axis.title.x = element_text(size = 12),
-        axis.text.y = element_text(size = 10),
-        axis.text.x = element_text(size = 10)
+        axis.text.y = element_text(size = 12),
+        axis.text.x = element_text(size = 12)
       )
     
     # Save the plot

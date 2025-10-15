@@ -4,52 +4,17 @@
 #########################################################################
 
 # Load necessary R module and libraries
-module load R/4.2.2-foss-2022a-bare
+module load RPlus
 R
 
-# Import required libraries
-library(data.table)  # Efficient CSV handling
-library(dplyr)       # Data manipulation
-library(fixest)      # Clustered standard error OLS regression
-library(stargazer)   # Exporting tables
-library(openxlsx)    # Exporting to Excel
-library(broom)       # Tidying regression outputs
-library(ggplot2)     # Plotting
-
-#########################################################################
-
-# PREPARE DATA
-
-# Load dataset
-final_df <- fread("/groups/umcg-lifelines/tmp01/projects/ov21_0226/lalajaasko/dfs/final_df.csv", sep=",", header=TRUE) %>%
-  as.data.frame()
-  
-covariates <- c("age_at_inclusion", "year_of_birth", "wave")
-final_df <- final_df %>%
-  group_by(source) %>%
-  mutate(across(all_of(covariates), ~ (. - mean(.,na.rm=TRUE)) / sd(.,na.rm=TRUE), .names = "{.col}_std")) %>%
-  ungroup()
-final_df <- final_df %>%
-  mutate(female_ctd = female - mean(female, na.rm = TRUE))
-
-# Filter data by source type
-final_df_cbcl <- final_df %>% filter(source == "cbcl")
-final_df_ysr <- final_df %>% filter(source == "ysr")
-
-# Output directory
-output_dir <- "/groups/umcg-lifelines/tmp01/projects/ov21_0226/lalajaasko/results/" # Change to your desired directory
-
-# Split data into boys and girls
-final_df_boys <- final_df %>% filter(female == 0)
-final_df_girls <- final_df %>% filter(female == 1)
-
-# Define data sources for boys and girls
-data_sources_gender <- list(
-  boys_cbcl = final_df_boys %>% filter(source == "cbcl"),
-  boys_ysr = final_df_boys %>% filter(source == "ysr"),
-  girls_cbcl = final_df_girls %>% filter(source == "cbcl"),
-  girls_ysr = final_df_girls %>% filter(source == "ysr")
-)
+# Load libraries
+library(data.table)
+library(dplyr)
+library(fixest)
+library(openxlsx)
+library(broom)
+library(ggplot2)
+library(car)
 
 #########################################################################
 
@@ -149,88 +114,231 @@ extract_results <- function(data_sources, raw_vars, predictors, types) {
 ###
 
 generate_pgi_plots <- function(results_df, samples, types, terms, output_dir, colors, title_suffix, ylim) {
+  
+  outcome_labels <- c(
+    "attention" = "Attention", "externalising" = "Externalizing",
+    "aggressive" = "Aggressive", "delinquent" = "Rule-Breaking",
+    "internalising" = "Internalizing", "anxious" = "Anxious",
+    "somatic" = "Somatic", "withdrawn" = "Withdrawn",
+    "social" = "Social", "thought" = "Thought"
+  )
+  
+  predictor_labels <- c(
+    "ea3cog_pgi" = "EA Cog PGI",
+    "ea3noncog_pgi" = "EA NonCog PGI",
+    "ea4_pgi" = "EA PGI"
+  )
+  
   for (sample in samples) {
-    sample_df <- results_df %>% 
-      filter(source == sample, term %in% terms, model %in% c("m1", "m2"))
-    
     for (type in types) {
-      type_df <- sample_df %>% filter(type == type)
       
-      type_df <- type_df %>% 
-        group_by(outcome, model, term) %>% 
-        slice(1) %>%  # Ensure no duplicates
+      plot_df <- results_df %>% 
+        filter(source == sample, type == !!type, term %in% terms, model %in% c("m1", "m2")) %>%
+        distinct(outcome, model, term, .keep_all = TRUE) %>%
+        mutate(
+          linetype = ifelse(significant, "solid", "dashed"),
+          predictor_label = predictor_labels[term],
+          outcome_label = factor(outcome_labels[outcome], 
+                                levels = c("Anxious", "Withdrawn", "Somatic", "Internalizing", 
+                                          "Social", "Thought", "Attention", "Externalizing", 
+                                          "Rule-Breaking", "Aggressive"))
+        ) %>%
+        filter(!is.na(predictor_label)) %>%
+        group_by(outcome) %>%
+        mutate(any_significant = any(significant)) %>%
         ungroup()
       
-      type_df <- type_df %>% 
-        mutate(linetype = ifelse(significant, "solid", "dashed"),
-               predictor_label = case_when(
-                 term == "ea3cog_pgi" ~ "EA Cog PGI",
-                 term == "ea3noncog_pgi" ~ "EA NonCog PGI",
-                 term == "ea4_pgi" ~ "EA PGI"
-               ),
-               outcome_label = factor(case_when(
-                 outcome == "attention" ~ "Attention Problems",
-                 outcome == "externalising" ~ "Externalizing Problem Behaviors",
-                 outcome == "aggressive" ~ "Aggressive Behavior",
-                 outcome == "delinquent" ~ "Rule-Breaking Behavior",
-                 outcome == "internalising" ~ "Internalizing Problem Behaviors",
-                 outcome == "anxious" ~ "Anxious",
-                 outcome == "somatic" ~ "Somatic Complaints",
-                 outcome == "withdrawn" ~ "Withdrawn",
-                 outcome == "social" ~ "Social Problems",
-                 outcome == "thought" ~ "Thought Problems",
-                 TRUE ~ as.character(outcome)  # Ensure proper labeling
-               ), levels = c("Attention Problems", "Externalizing Problem Behaviors", "Aggressive Behavior", "Rule-Breaking Behavior", "Internalizing Problem Behaviors", "Anxious", "Somatic Complaints", "Withdrawn", "Social Problems", "Thought Problems"))) %>% 
-        filter(!is.na(predictor_label))  # Keep only necessary predictors
-      
-      if (nrow(type_df) > 0) {
-        plot <- ggplot(type_df, aes(
-          x = outcome_label,
-          y = estimate,
-          color = predictor_label,
-          shape = model,
-          linetype = linetype
-        )) +
+      for (sig_status in c(TRUE, FALSE)) {
+        
+        df <- plot_df %>% filter(any_significant == sig_status)
+        
+        if (nrow(df) == 0) next
+        
+        plot <- ggplot(df, aes(x = outcome_label, y = estimate, 
+                              color = predictor_label, shape = model, linetype = linetype)) +
           geom_point(size = 3, position = position_dodge(width = 0.6)) +
           geom_errorbar(aes(ymin = conf.low, ymax = conf.high),
-                        width = 0.3, position = position_dodge(width = 0.6)) +
-          geom_hline(yintercept = 0, color = "black", linetype = "solid", linewidth = 0.5) +
+                       width = 0.3, position = position_dodge(width = 0.6)) +
+          geom_hline(yintercept = 0, color = "black", linewidth = 0.5) +
           scale_color_manual(values = colors) +
           scale_shape_manual(values = c("m1" = 16, "m2" = 17)) +
           scale_linetype_identity() +
-          scale_y_continuous(limits = ylim) +  # Use ylim as a variable
-          labs(
-            y = "Estimate for offspring PGI", 
-            color = "Predictor",
-            shape = "Model"
-          ) +
+          scale_y_continuous(limits = ylim) +
+          labs(y = "Estimate for offspring PGI", x = NULL, 
+               color = "Predictor", shape = "Model") +
           theme_minimal() +
           theme(
-            axis.text.x = element_text(angle = 45, hjust = 1, size = 10), 
-            legend.position = "bottom"  # Move legend below
-          ) + labs(x=NULL)
+            axis.text.x = element_text(angle = 45, hjust = 1, size = 11),
+            axis.text = element_text(size = 11),
+            axis.title = element_text(size = 11),
+            legend.text = element_text(size = 11),
+            legend.title = element_text(size = 11),
+            legend.position = "bottom"
+          )
         
-        file_name <- paste0(output_dir, sample, "_", title_suffix, "_", type, ".png")
+        sig_label <- ifelse(sig_status, "significant", "insignificant")
+        file_name <- paste0(output_dir, sample, "_", title_suffix, "_", type, "_", sig_label, ".png")
         ggsave(file_name, plot, width = 12, height = 6)
       }
     }
   }
 }
 
+###
+
+compare_coefficients_wald <- function(model1, model2, sample1_name, sample2_name, outcome, 
+                                      model_name = "M1", 
+                                      alpha = 0.05) {
+  # Get predictor names for both models
+  predictors1 <- names(coef(model1))
+  predictors2 <- names(coef(model2))
+  
+  # Only keep predictors that exist in BOTH models
+  common_predictors <- intersect(predictors1, predictors2)
+  
+  # Initialize results list
+  results <- list()
+  
+  for (var_name in common_predictors) {
+    # Extract coefficients and standard errors
+    coef1 <- coef(model1)[var_name]
+    coef2 <- coef(model2)[var_name]
+    
+    se1 <- sqrt(diag(vcov(model1)))[var_name]
+    se2 <- sqrt(diag(vcov(model2)))[var_name]
+    
+    # Compute difference, standard error, and z-score
+    diff <- coef1 - coef2
+    se_diff <- sqrt(se1^2 + se2^2)
+    z_value <- diff / se_diff
+    p_value <- 2 * (1 - pnorm(abs(z_value)))  # Two-tailed test
+    
+    # Compute confidence intervals for the difference
+    ci_lower <- diff - 1.96 * se_diff
+    ci_upper <- diff + 1.96 * se_diff
+    
+    # Store results in a data frame
+    results[[var_name]] <- data.frame(
+      outcome = outcome,
+      model = model_name,
+      sample1 = sample1_name,
+      sample2 = sample2_name,
+      predictor = var_name, 
+      coef_sample1 = coef1,
+      se_sample1 = se1,
+      coef_sample2 = coef2,
+      se_sample2 = se2,
+      diff = diff,
+      se_diff = se_diff,
+      ci_lower = ci_lower,
+      ci_upper = ci_upper,
+      z_value = z_value, 
+      p_value = p_value,
+      significant = p_value < alpha,
+      sig_stars = case_when(
+        p_value < 0.001 ~ "***",
+        p_value < 0.01 ~ "**",
+        p_value < 0.05 ~ "*",
+        TRUE ~ ""
+      )
+    )
+  }
+  
+  results_df <- bind_rows(results)
+  
+  # Sort by p-value (most significant first)
+  results_df <- results_df %>% 
+    arrange(p_value) %>%
+    mutate(
+      # Format p-values for better readability
+      p_formatted = case_when(
+        p_value < 0.001 ~ "<0.001",
+        TRUE ~ sprintf("%.3f", p_value)
+      ),
+      # Create a comparison label for clarity
+      comparison = sprintf("%s: %s vs %s", 
+                          model_name, sample1_name, sample2_name)
+    )
+  
+  # Print summary of significant differences
+  n_sig <- sum(results_df$significant)
+  cat("\n========================================\n")
+  cat("Coefficient Comparison Summary\n")
+  cat("========================================\n")
+  cat(sprintf("Outcome: %s\n", outcome))
+  cat(sprintf("Model: %s\n", model_name))
+  cat(sprintf("Comparing samples: %s vs %s\n", sample1_name, sample2_name))
+  cat(sprintf("Total predictors compared: %d\n", nrow(results_df)))
+  cat(sprintf("Significant differences (α=%.2f): %d\n", alpha, n_sig))
+  cat("========================================\n\n")
+  
+  if (n_sig > 0) {
+    cat("Significant differences:\n")
+    sig_results <- results_df %>% 
+      filter(significant) %>%
+      select(predictor, coef_sample1, coef_sample2, diff, ci_lower, ci_upper, p_formatted, sig_stars)
+    
+    # Rename columns for clarity in output
+    colnames(sig_results) <- c("Predictor", 
+                               sample1_name, 
+                               sample2_name, 
+                               "Difference", "CI_Lower", "CI_Upper", "p-value", "Sig")
+    print(sig_results, row.names = FALSE)
+    cat("\n")
+  }
+  
+  return(results_df)
+}
+
+#########################################################################
+
+# PREPARE DATA
+
+# Load dataset
+final_df <- fread("/groups/umcg-lifelines/tmp02/projects/ov21_0226/lalajaasko/dfs/final_df.csv", sep=",", header=TRUE) %>%
+  as.data.frame()
+  
+covariates <- c("age_at_inclusion", "year_of_birth", "wave")
+final_df <- final_df %>%
+  group_by(source) %>%
+  mutate(across(all_of(covariates), ~ (. - mean(.,na.rm=TRUE)) / sd(.,na.rm=TRUE), .names = "{.col}_std")) %>%
+  ungroup()
+final_df <- final_df %>%
+  mutate(female_ctd = female - mean(female, na.rm = TRUE))
+
+# Filter data by source type
+final_df_cbcl <- final_df %>% filter(source == "cbcl")
+final_df_ysr <- final_df %>% filter(source == "ysr")
+
+# Output directory
+output_dir <- "/groups/umcg-lifelines/tmp02/projects/ov21_0226/lalajaasko/results/" # Change to your desired directory
+
+# Split data into boys and girls
+final_df_boys <- final_df %>% filter(female == 0)
+final_df_girls <- final_df %>% filter(female == 1)
+
+# Define data sources for boys and girls
+data_sources_gender <- list(
+  boys_cbcl = final_df_boys %>% filter(source == "cbcl"),
+  boys_ysr = final_df_boys %>% filter(source == "ysr"),
+  girls_cbcl = final_df_girls %>% filter(source == "cbcl"),
+  girls_ysr = final_df_girls %>% filter(source == "ysr")
+)
+
 #########################################################################
 
 # DEFINE ALL VARIABLES USED 
 
-## Should I include also sex-age interaction?
+## Should I include also sex-age interaction? For testing gender difference yes
+
+# Define data variables
+raw_vars <- c("aggressive", "anxious", "attention", "delinquent", "social", "somatic", "thought", "withdrawn", "externalising", "internalising")
+std_vars <- paste0(raw_vars, "_std")
 
 # Define control variables
 control_vars <- c("female_ctd","age_at_inclusion_std", "year_of_birth_std", "wave_std", 
                   "pc1", "pc2", "pc3", "pc4", "pc5", "pc6", "pc7", "pc8", "pc9", "pc10")
 controls <- paste(control_vars, collapse = " + ")
-
-# Define data variables
-raw_vars <- c("aggressive", "anxious", "attention", "delinquent", "social", "somatic", "thought", "withdrawn", "externalising", "internalising")
-std_vars <- paste0(raw_vars, "_std")
 
 # Define datasources
 data_sources <- list(cbcl = final_df_cbcl, ysr = final_df_ysr)
@@ -244,11 +352,11 @@ types <- c("raw", "std")
 # DEFINE PREDICTORS
 
 # EA4
-# predictor_vars_m1 <- c("ea4_pgi")
-# predictor_vars_m2 <- c("ea4_pgi", "ea4_pgi_sum")
+predictor_vars_m1 <- c("ea4_pgi")
+predictor_vars_m2 <- c("ea4_pgi", "ea4_pgi_sum")
 # EA3s
- predictor_vars_m1 <- c("ea3noncog_pgi", "ea3cog_pgi")
- predictor_vars_m2 <- c("ea3noncog_pgi", "ea3cog_pgi", "ea3noncog_pgi_sum", "ea3cog_pgi_sum")
+# predictor_vars_m1 <- c("ea3noncog_pgi", "ea3cog_pgi")
+# predictor_vars_m2 <- c("ea3noncog_pgi", "ea3cog_pgi", "ea3noncog_pgi_sum", "ea3cog_pgi_sum")
 
 # Formula
 predictors_m1 <- paste(predictor_vars_m1, collapse = " + ")
@@ -278,8 +386,8 @@ for (source_name in names(data_sources)) {
 
 # Set file paths with predictor_type
 file_paths <- list(
-  cbcl = paste0("/groups/umcg-lifelines/tmp01/projects/ov21_0226/lalajaasko/results/full_cbcl_", predictor_type, ".xlsx"),
-  ysr = paste0("/groups/umcg-lifelines/tmp01/projects/ov21_0226/lalajaasko/results/full_ysr_", predictor_type, ".xlsx")
+  cbcl = paste0("/groups/umcg-lifelines/tmp02/projects/ov21_0226/lalajaasko/results/full_cbcl_", predictor_type, ".xlsx"),
+  ysr = paste0("/groups/umcg-lifelines/tmp02/projects/ov21_0226/lalajaasko/results/full_ysr_", predictor_type, ".xlsx")
 )
 
 for (source_name in names(data_sources)) {
@@ -335,11 +443,74 @@ generate_pgi_plots(
 
 #########################################################################
 
+# WALD TEST
+cbcl_vs_ysr_results <- list()
+
+for (outcome in std_vars) {
+  cbcl_model_m1 <- paste0(outcome, "_m1_cbcl")
+  ysr_model_m1 <- paste0(outcome, "_m1_ysr")
+  cbcl_model_m2 <- paste0(outcome, "_m2_cbcl")
+  ysr_model_m2 <- paste0(outcome, "_m2_ysr")
+  
+  # Compare m1 models
+  if (exists(cbcl_model_m1) && exists(ysr_model_m1)) {
+    model1 <- get(cbcl_model_m1)
+    model2 <- get(ysr_model_m1)
+    if (length(intersect(names(coef(model1)), names(coef(model2)))) > 0) {
+      cbcl_vs_ysr_results[[paste0(outcome, "_m1")]] <- compare_coefficients_wald(
+        model1, model2, "CBCL", "YSR", outcome, model_name = "M1")
+    }
+  }
+  
+  # Compare m2 models
+  if (exists(cbcl_model_m2) && exists(ysr_model_m2)) {
+    model1 <- get(cbcl_model_m2)
+    model2 <- get(ysr_model_m2)
+    if (length(intersect(names(coef(model1)), names(coef(model2)))) > 0) {
+      cbcl_vs_ysr_results[[paste0(outcome, "_m2")]] <- compare_coefficients_wald(
+        model1, model2, "CBCL", "YSR", outcome, model_name = "M2")
+    }
+  }
+}
+
+cbcl_vs_ysr_results_df <- bind_rows(cbcl_vs_ysr_results)
+
+# Summary stats
+cat(sprintf("\nTotal: %d | Significant: %d (%.1f%%)\n", 
+            nrow(cbcl_vs_ysr_results_df),
+            sum(cbcl_vs_ysr_results_df$significant),
+            100 * mean(cbcl_vs_ysr_results_df$significant)))
+
+# Create Excel workbook
+wald_test <- createWorkbook()
+addWorksheet(wald_test, "CBCL_vs_YSR") 
+writeData(wald_test, "CBCL_vs_YSR", cbcl_vs_ysr_results_df)
+
+if (sum(cbcl_vs_ysr_results_df$significant) > 0) {
+  addWorksheet(wald_test, "Significant_Only")
+  writeData(wald_test, "Significant_Only", cbcl_vs_ysr_results_df %>% filter(significant))
+}
+
+# saveWorkbook(wald_test, "/groups/umcg-lifelines/tmp02/projects/ov21_0226/lalajaasko/results/wald_test_results_EA4.xlsx", overwrite = TRUE)
+# cat("Results saved!\n")
+saveWorkbook(wald_test, "/groups/umcg-lifelines/tmp02/projects/ov21_0226/lalajaasko/results/wald_test_results_EA3.xlsx", overwrite = TRUE)
+cat("Results saved!\n")
+
+#########################################################################
+
 # TEST GENDER DIFFERENCE IN GENETIC EFFECT BY INTRODUCING AN INTERACTION
 
-# Define interaction terms
-interaction_terms_m1 <- paste0(predictor_vars_m1, ":female_ctd", collapse = " + ")
-interaction_terms_m2 <- paste0(predictor_vars_m2, ":female_ctd", collapse = " + ")
+# Create interaction terms for predictors
+interaction_predictors_m1 <- paste0(predictor_vars_m1, ":female_ctd", collapse = " + ")
+interaction_predictors_m2 <- paste0(predictor_vars_m2, ":female_ctd", collapse = " + ")
+
+# Create interaction terms for controls (excluding female_ctd itself)
+control_vars_no_female <- setdiff(control_vars, "female_ctd")
+interaction_controls <- paste0(control_vars_no_female, ":female_ctd", collapse = " + ")
+
+# Combine all interaction terms
+interaction_terms_m1 <- paste(interaction_predictors_m1, interaction_controls, sep = " + ")
+interaction_terms_m2 <- paste(interaction_predictors_m2, interaction_controls, sep = " + ")
 
 # RUN REGRESSIONS AND EXPORT TO EXCEL
 
@@ -362,8 +533,8 @@ for (source_name in names(data_sources)) {
 
 # Set file paths with predictor_type
 file_paths <- list(
-  cbcl = paste0("/groups/umcg-lifelines/tmp01/projects/ov21_0226/lalajaasko/results/interaction_cbcl_", predictor_type, ".xlsx"),
-  ysr = paste0("/groups/umcg-lifelines/tmp01/projects/ov21_0226/lalajaasko/results/interaction_ysr_", predictor_type, ".xlsx")
+  cbcl = paste0("/groups/umcg-lifelines/tmp02/projects/ov21_0226/lalajaasko/results/interaction_cbcl_", predictor_type, ".xlsx"),
+  ysr = paste0("/groups/umcg-lifelines/tmp02/projects/ov21_0226/lalajaasko/results/interaction_ysr_", predictor_type, ".xlsx")
 )
 
 for (source_name in names(data_sources)) {
@@ -390,10 +561,10 @@ results_df <- extract_results(data_sources, raw_vars, predictor_vars_m1, types)
 
 # Updated file paths to avoid overwriting
 file_paths_gender <- list(
-  boys_cbcl = paste0("/groups/umcg-lifelines/tmp01/projects/ov21_0226/lalajaasko/results/boys_cbcl_", predictor_type, ".xlsx"),
-  boys_ysr = paste0("/groups/umcg-lifelines/tmp01/projects/ov21_0226/lalajaasko/results/boys_ysr_", predictor_type, ".xlsx"),
-  girls_cbcl = paste0("/groups/umcg-lifelines/tmp01/projects/ov21_0226/lalajaasko/results/girls_cbcl_", predictor_type, ".xlsx"),
-  girls_ysr = paste0("/groups/umcg-lifelines/tmp01/projects/ov21_0226/lalajaasko/results/girls_ysr_", predictor_type, ".xlsx")
+  boys_cbcl = paste0("/groups/umcg-lifelines/tmp02/projects/ov21_0226/lalajaasko/results/boys_cbcl_", predictor_type, ".xlsx"),
+  boys_ysr = paste0("/groups/umcg-lifelines/tmp02/projects/ov21_0226/lalajaasko/results/boys_ysr_", predictor_type, ".xlsx"),
+  girls_cbcl = paste0("/groups/umcg-lifelines/tmp02/projects/ov21_0226/lalajaasko/results/girls_cbcl_", predictor_type, ".xlsx"),
+  girls_ysr = paste0("/groups/umcg-lifelines/tmp02/projects/ov21_0226/lalajaasko/results/girls_ysr_", predictor_type, ".xlsx")
 )
 
 # RUN REGRESSIONS BY GENDER AND EXPORT TO EXCEL
@@ -473,186 +644,4 @@ generate_pgi_plots(
 
 #########################################################################
 
-# WALD TEST
-
-library(car)
-
-compare_coefficients_wald <- function(model1, model2, sample1_name, sample2_name, outcome) {
-  # Get predictor names for both models
-  predictors1 <- names(coef(model1))
-  predictors2 <- names(coef(model2))
-  
-  # Only keep predictors that exist in BOTH models
-  common_predictors <- intersect(predictors1, predictors2)
-  
-  # Initialize results list
-  results <- list()
-  
-  for (var_name in common_predictors) {
-    # Extract coefficients and standard errors
-    coef1 <- coef(model1)[var_name]
-    coef2 <- coef(model2)[var_name]
-    
-    se1 <- sqrt(diag(vcov(model1)))[var_name]
-    se2 <- sqrt(diag(vcov(model2)))[var_name]
-    
-    # Compute difference, standard error, and z-score
-    diff <- coef1 - coef2
-    se_diff <- sqrt(se1^2 + se2^2)
-    z_value <- diff / se_diff
-    p_value <- 2 * (1 - pnorm(abs(z_value)))  # Two-tailed test
-    
-    # Store results in a data frame
-    results[[var_name]] <- data.frame(
-      outcome = outcome,
-      predictor = var_name, 
-      coef_sample1 = coef1, 
-      coef_sample2 = coef2, 
-      diff = diff, 
-      z_value = z_value, 
-      p_value = p_value,
-      sample1 = sample1_name,
-      sample2 = sample2_name
-    )
-  }
-  
-  return(bind_rows(results))  # Combine list into a single data frame
-}
-
-# Initialize an empty list to store results
-cbcl_vs_ysr_results <- list()
-
-# Loop over each outcome variable
-for (outcome in std_vars) {
-  # Dynamically construct model names
-  cbcl_model_m1 <- paste0(outcome, "_m1_cbcl")
-  ysr_model_m1 <- paste0(outcome, "_m1_ysr")
-  
-  cbcl_model_m2 <- paste0(outcome, "_m2_cbcl")
-  ysr_model_m2 <- paste0(outcome, "_m2_ysr")
-
-  # Compare m1 models (CBCL vs. YSR)
-  if (exists(cbcl_model_m1) && exists(ysr_model_m1)) {
-    model1 <- get(cbcl_model_m1)
-    model2 <- get(ysr_model_m1)
-
-    # Ensure they have common predictors before running the test
-    if (length(intersect(names(coef(model1)), names(coef(model2)))) > 0) {
-      cbcl_vs_ysr_results[[paste0(outcome, "_m1")]] <- compare_coefficients_wald(
-        model1, model2, "CBCL", "YSR", outcome
-      )
-    }
-  }
-  
-  # Compare m2 models (CBCL vs. YSR)
-  if (exists(cbcl_model_m2) && exists(ysr_model_m2)) {
-    model1 <- get(cbcl_model_m2)
-    model2 <- get(ysr_model_m2)
-
-    # Ensure they have common predictors before running the test
-    if (length(intersect(names(coef(model1)), names(coef(model2)))) > 0) {
-      cbcl_vs_ysr_results[[paste0(outcome, "_m2")]] <- compare_coefficients_wald(
-        model1, model2, "CBCL", "YSR", outcome
-      )
-    }
-  }
-}
-
-# Combine all results into a single data frame
-cbcl_vs_ysr_results_df <- bind_rows(cbcl_vs_ysr_results)
-
-# Create an Excel workbook for the test results
-wald_test <- createWorkbook()
-
-# Add worksheet for CBCL vs. YSR results
-addWorksheet(wald_test, "CBCL_vs_YSR") 
-writeData(wald_test, "CBCL_vs_YSR", cbcl_vs_ysr_results_df)
-
-# Save the workbook
-saveWorkbook(wald_test, "/groups/umcg-lifelines/tmp01/projects/ov21_0226/lalajaasko/results/wald_test_results.xlsx", overwrite = TRUE)
-
-#########################################################################
-
-# CHOW TEST(?)
-
-# Function to perform coefficient comparison (Z-test)
-compare_coefficients <- function(model1, model2, model1_name, model2_name) {
-  coef1 <- coef(model1)
-  coef2 <- coef(model2)
-  se1 <- sqrt(diag(vcov(model1)))
-  se2 <- sqrt(diag(vcov(model2)))
-
-  # Ensure both models have the same terms
-  common_terms <- intersect(names(coef1), names(coef2))
-
-  results <- data.frame(
-    term = common_terms,
-    estimate1 = coef1[common_terms],
-    estimate2 = coef2[common_terms],
-    std.error1 = se1[common_terms],
-    std.error2 = se2[common_terms]
-  )
-
-  # Compute Z-scores
-  results <- results %>%
-    mutate(
-      z_score = (estimate1 - estimate2) / sqrt(std.error1^2 + std.error2^2),
-      p_value = 2 * (1 - pnorm(abs(z_score))) # Two-tailed test
-    )
-
-  results <- results %>%
-    mutate(
-      significant = p_value < 0.05
-    )
-
-  results <- results %>%
-    rename(
-      !!paste0("Estimate_", model1_name) := estimate1,
-      !!paste0("Estimate_", model2_name) := estimate2,
-      !!paste0("StdError_", model1_name) := std.error1,
-      !!paste0("StdError_", model2_name) := std.error2
-    )
-
-  return(results)
-}
-
-# Initialize list to store CBCL vs YSR results
-cbcl_vs_ysr_results <- list()
-
-# Loop over each outcome variable
-for (outcome in std_vars) {
-  # Construct model names dynamically
-  cbcl_model_m1 <- paste0(outcome, "_m1_cbcl")
-  ysr_model_m1 <- paste0(outcome, "_m1_ysr")
-  
-  cbcl_model_m2 <- paste0(outcome, "_m2_cbcl")
-  ysr_model_m2 <- paste0(outcome, "_m2_ysr")
-
-  # Check if models exist before running the test
-  if (exists(cbcl_model_m1) && exists(ysr_model_m1)) {
-    cbcl_vs_ysr_results[[paste0(outcome, "_m1")]] <- compare_coefficients(
-      get(cbcl_model_m1), get(ysr_model_m1), "CBCL", "YSR"
-    )
-  }
-  
-  if (exists(cbcl_model_m2) && exists(ysr_model_m2)) {
-    cbcl_vs_ysr_results[[paste0(outcome, "_m2")]] <- compare_coefficients(
-      get(cbcl_model_m2), get(ysr_model_m2), "CBCL", "YSR"
-    )
-  }
-}
-
-# Convert results to a data frame
-cbcl_vs_ysr_results_df <- bind_rows(cbcl_vs_ysr_results, .id = "outcome")
-
-# Create an Excel workbook for the Chow test results
-chow_test <- createWorkbook()
-
-# Add worksheet for CBCL vs. YSR results
-addWorksheet(chow_test, "CBCL_vs_YSR") 
-writeData(chow_test, "CBCL_vs_YSR", cbcl_vs_ysr_results_df)
-
-# Save the workbook
-saveWorkbook(chow_test, "/groups/umcg-lifelines/tmp01/projects/ov21_0226/lalajaasko/results/chow_test_results.xlsx", overwrite = TRUE)
-
-#########################################################################
+# END
