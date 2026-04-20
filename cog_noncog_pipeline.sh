@@ -36,17 +36,17 @@ Rscript -e '
 # echo "--- 2_1_Combine_samples ---"
 # Rscript 2_1_Combine_samples.r
 
-echo "--- 3_1_Behavioral_variables ---"
-Rscript 3_1_Behavioral_variables.r
+# echo "--- 3_1_Behavioral_variables ---"
+# Rscript 3_1_Behavioral_variables.r
 
-echo "--- 3_2_Descriptives ---"
-Rscript 3_2_Descriptives.r
+# echo "--- 3_2_Descriptives ---"
+# Rscript 3_2_Descriptives.r
 
 echo "--- 4_1_OLS_regressions ---"
 Rscript 4_1_OLS_regressions.r
 
-echo "--- 5_Power_calculation ---"
-Rscript 5_Power_calculation.r
+# echo "--- 5_Power_calculation ---"
+# Rscript 5_Power_calculation.r
  
 echo "--- 6_Results_tables ---"
 Rscript 6_Results_tables.R

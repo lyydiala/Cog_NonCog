@@ -1,11 +1,12 @@
 library(data.table)
 library(dplyr)
+library(tidyr)
 library(fixest)
 library(openxlsx)
 library(broom)
 library(ggplot2)
 library(car)
- 
+
 #########################################################################
  
 # DEFINE FUNCTIONS
@@ -124,27 +125,87 @@ extract_results <- function(models, raw_vars, predictor_vars, types, data_source
  
 ###
  
-generate_pgi_plots <- function(results_df, samples, types, terms, output_dir, colors, title_suffix) {
-  
+outcome_labels <- c(
+  "attention"     = "Attention",    "externalising" = "Externalizing",
+  "aggressive"    = "Aggressive",   "delinquent"    = "Rule-Breaking",
+  "internalising" = "Internalizing","anxious"       = "Anxious",
+  "somatic"       = "Somatic",      "withdrawn"     = "Withdrawn",
+  "social"        = "Social",       "thought"       = "Thought"
+)
+ 
+outcome_levels <- c("Internalizing", "Anxious", "Withdrawn", "Somatic",
+                    "Social", "Thought", "Attention", "Rule-Breaking",
+                    "Aggressive", "Externalizing")
+ 
+predictor_labels <- c(
+  "pgi_EA3Cog"    = "EA Cog PGI",
+  "pgi_EA3NonCog" = "EA NonCog PGI",
+  "pgi_EA4"       = "EA PGI"
+)
+ 
+# Classify outcomes into one of four groups based on m1/m2 significance
+classify_outcomes <- function(results_df, terms) {
+  results_df %>%
+    filter(term %in% terms) %>%
+    group_by(outcome, model) %>%
+    summarise(sig = any(significant), .groups = "drop") %>%
+    tidyr::pivot_wider(names_from = model, values_from = sig, values_fill = FALSE) %>%
+    mutate(
+      group = case_when(
+        m1 & m2  ~ "direct",
+        m1 & !m2 ~ "total",
+        !m1 & m2 ~ "odd",
+        TRUE     ~ "insignificant"
+      )
+    ) %>%
+    select(outcome, group)
+}
+ 
+# Core plotting function: saves one figure given a subset of plot_df
+save_plot <- function(df, ylim, colors, filepath) {
+  if (nrow(df) == 0) return(invisible(NULL))
+  plot <- ggplot(df, aes(x = outcome_label, y = estimate,
+                         color = predictor_label, shape = model, linetype = linetype)) +
+    geom_point(size = 3, position = position_dodge(width = 0.6)) +
+    geom_errorbar(aes(ymin = conf.low, ymax = conf.high),
+                  width = 0.3, position = position_dodge(width = 0.6)) +
+    geom_hline(yintercept = 0, color = "black", linewidth = 0.5) +
+    scale_color_manual(values = colors) +
+    scale_shape_manual(values = c("m1" = 16, "m2" = 17)) +
+    scale_linetype_identity() +
+    scale_y_continuous(limits = ylim) +
+    labs(y = "Estimate for offspring PGI", x = NULL, color = "Predictor", shape = "Model") +
+    theme_minimal() +
+    theme(
+      axis.text.x  = element_text(angle = 45, hjust = 1, size = 11),
+      axis.text    = element_text(size = 11),
+      axis.title   = element_text(size = 11),
+      legend.text  = element_text(size = 11),
+      legend.title = element_text(size = 11),
+      legend.position = "bottom"
+    )
+  ggsave(filepath, plot, width = 12, height = 6)
+}
+ 
+generate_pgi_plots <- function(results_df, samples, types, terms, output_dir, colors,
+                               title_suffix, file_suffix = "") {
+ 
   plot_data <- results_df %>% filter(term %in% terms)
   ylim <- range(c(plot_data$conf.low, plot_data$conf.high), na.rm = TRUE)
- 
-  outcome_labels <- c(
-    "attention"     = "Attention",    "externalising" = "Externalizing",
-    "aggressive"    = "Aggressive",   "delinquent"    = "Rule-Breaking",
-    "internalising" = "Internalizing","anxious"       = "Anxious",
-    "somatic"       = "Somatic",      "withdrawn"     = "Withdrawn",
-    "social"        = "Social",       "thought"       = "Thought"
-  )
- 
-  predictor_labels <- c(
-    "pgi_EA3Cog"    = "EA Cog PGI",
-    "pgi_EA3NonCog" = "EA NonCog PGI",
-    "pgi_EA4"       = "EA PGI"
-  )
+  all_outcomes <- unique(results_df$outcome)
  
   for (sample in samples) {
     for (type in types) {
+ 
+      # Classify outcomes per sample
+      outcome_groups <- classify_outcomes(results_df %>% filter(source == sample), terms)
+      insig_outcomes <- setdiff(all_outcomes, outcome_groups$outcome)
+      if (length(insig_outcomes) > 0) {
+        outcome_groups <- bind_rows(
+          outcome_groups,
+          data.frame(outcome = insig_outcomes, group = "insignificant")
+        )
+      }
  
       plot_df <- results_df %>%
         filter(source == sample, type == !!type, term %in% terms, model %in% c("m1", "m2")) %>%
@@ -152,44 +213,27 @@ generate_pgi_plots <- function(results_df, samples, types, terms, output_dir, co
         mutate(
           linetype        = ifelse(significant, "solid", "dashed"),
           predictor_label = predictor_labels[term],
-          outcome_label   = factor(outcome_labels[outcome],
-                                   levels = c("Anxious", "Withdrawn", "Somatic", "Internalizing",
-                                              "Social", "Thought", "Attention", "Externalizing",
-                                              "Rule-Breaking", "Aggressive"))
+          outcome_label   = factor(outcome_labels[outcome], levels = outcome_levels)
         ) %>%
         filter(!is.na(predictor_label)) %>%
         group_by(outcome) %>%
         mutate(any_significant = any(significant)) %>%
-        ungroup()
+        ungroup() %>%
+        left_join(outcome_groups, by = "outcome")
  
+      # Original significant/insignificant figures (unchanged)
       for (sig_status in c(TRUE, FALSE)) {
         df <- plot_df %>% filter(any_significant == sig_status)
-        if (nrow(df) == 0) next
- 
-        plot <- ggplot(df, aes(x = outcome_label, y = estimate,
-                               color = predictor_label, shape = model, linetype = linetype)) +
-          geom_point(size = 3, position = position_dodge(width = 0.6)) +
-          geom_errorbar(aes(ymin = conf.low, ymax = conf.high),
-                        width = 0.3, position = position_dodge(width = 0.6)) +
-          geom_hline(yintercept = 0, color = "black", linewidth = 0.5) +
-          scale_color_manual(values = colors) +
-          scale_shape_manual(values = c("m1" = 16, "m2" = 17)) +
-          scale_linetype_identity() +
-          scale_y_continuous(limits = ylim) +
-          labs(y = "Estimate for offspring PGI", x = NULL, color = "Predictor", shape = "Model") +
-          theme_minimal() +
-          theme(
-            axis.text.x  = element_text(angle = 45, hjust = 1, size = 11),
-            axis.text    = element_text(size = 11),
-            axis.title   = element_text(size = 11),
-            legend.text  = element_text(size = 11),
-            legend.title = element_text(size = 11),
-            legend.position = "bottom"
-          )
- 
         sig_label <- ifelse(sig_status, "significant", "insignificant")
-        ggsave(paste0(figures_dir, sample, "_", title_suffix, "_", type, "_", sig_label, ".png"),
-               plot, width = 12, height = 6)
+        save_plot(df, ylim, colors,
+                  paste0(figures_dir, sample, file_suffix, "_", title_suffix, "_", type, "_", sig_label, ".png"))
+      }
+ 
+      # New group figures: direct, total, odd, insignificant
+      for (grp in c("direct", "total", "odd", "insignificant")) {
+        df <- plot_df %>% filter(group == grp)
+        save_plot(df, ylim, colors,
+                  paste0(figures_dir, sample, file_suffix, "_", grp, "_", title_suffix, "_", type, ".png"))
       }
     }
   }
@@ -448,7 +492,7 @@ for (predictor_type in c("EA4", "EA3")) {
     terms = predictor_vars_m1, output_dir = output_dir,
     colors = if (predictor_type == "EA4") c("EA PGI" = "mediumpurple3")
              else c("EA Cog PGI" = "lightskyblue3", "EA NonCog PGI" = "orchid4"),
-    title_suffix = predictor_type
+    title_suffix = predictor_type, file_suffix = "_sex"
   )
  
 } # end for loop
