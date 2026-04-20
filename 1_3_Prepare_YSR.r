@@ -1,12 +1,3 @@
-########################################################################
-# Date: September 2024
-# Description: Code to prepare socioemotional skill data YSR
-#	Items defined according to ASEBA manual
-#	Note: some researcher adjustments as indicated in the excel file CBCL_YSR_match.xlsx
-########################################################################
-
-module load R/4.2.2-foss-2022a-bare
-R
 library(magrittr)
 library(dplyr)
 library(data.table)
@@ -16,19 +7,19 @@ library(data.table)
 ## Load behavioral variables into R
 
 # Wave 1
-pheno1aq_youth <- fread("/groups/umcg-lifelines/tmp01/projects/ov21_0226/dataset_order_202207/results/1a_q_youth_results.csv", 
+pheno1aq_youth <- fread("/groups/umcg-lifelines/tmp02/projects/ov21_0226/dataset_order_202207/results/1a_q_youth_results.csv", 
 	sep=",", header=TRUE)
 pheno1aq_youth <- as.data.frame(pheno1aq_youth)
 
 # Wave 2
-pheno2aq_youth <- fread("/groups/umcg-lifelines/tmp01/projects/ov21_0226/dataset_order_202207/results/2a_q_youth_results.csv", 
+pheno2aq_youth <- fread("/groups/umcg-lifelines/tmp02/projects/ov21_0226/dataset_order_202207/results/2a_q_youth_results.csv", 
 	sep=",", header=TRUE)
 pheno2aq_youth <- as.data.frame(pheno2aq_youth)
 # Trimming whitespace from column names
 pheno2aq_youth <- setNames(pheno2aq_youth, trimws(names(pheno2aq_youth)))
 
 # Wave 3
-pheno3aq_youth <- fread("/groups/umcg-lifelines/tmp01/projects/ov21_0226/dataset_order_202207/results/3a_q_youth_results.csv", 
+pheno3aq_youth <- fread("/groups/umcg-lifelines/tmp02/projects/ov21_0226/dataset_order_202207/results/3a_q_youth_results.csv", 
 	sep=",", header=TRUE)
 pheno3aq_youth <- as.data.frame(pheno3aq_youth)
 
@@ -948,11 +939,11 @@ print(nrow(ysr_w3)) #465
 length(unique(ysr_w3$project_pseudo_id)) 
 
 # Save into separate data frames
-write.table(ysr_w1,"/groups/umcg-lifelines/tmp01/projects/ov21_0226/lalajaasko/dfs/ysr_w1.csv",
+write.table(ysr_w1,"/groups/umcg-lifelines/tmp02/projects/ov21_0226/lalajaasko/Cog_NonCog/OUTPUT/data/ysr_w1.csv",
 	sep=",",row.names=FALSE,quote=FALSE)
-write.table(ysr_w2,"/groups/umcg-lifelines/tmp01/projects/ov21_0226/lalajaasko/dfs/ysr_w2.csv",
+write.table(ysr_w2,"/groups/umcg-lifelines/tmp02/projects/ov21_0226/lalajaasko/Cog_NonCog/OUTPUT/data/ysr_w2.csv",
 	sep=",",row.names=FALSE,quote=FALSE)
-write.table(ysr_w3,"/groups/umcg-lifelines/tmp01/projects/ov21_0226/lalajaasko/dfs/ysr_w3.csv",
+write.table(ysr_w3,"/groups/umcg-lifelines/tmp02/projects/ov21_0226/lalajaasko/Cog_NonCog/OUTPUT/data/ysr_w3.csv",
 	sep=",",row.names=FALSE,quote=FALSE)
 
 #######################################################################	

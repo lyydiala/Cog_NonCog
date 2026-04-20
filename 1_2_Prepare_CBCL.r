@@ -1,11 +1,3 @@
-########################################################################
-# Date: September 2024
-# Description: Code to prepare socioemotional skill data CBCL
-#	Items defined according to ASEBA manual
-########################################################################
-
-module load R/4.2.2-foss-2022a-bare
-R
 library(magrittr)
 library(dplyr)
 library(data.table)
@@ -15,19 +7,19 @@ library(data.table)
 ## Load behavioral variables into R
 
 # Wave 1
-pheno1aq_behavior <- fread("/groups/umcg-lifelines/tmp01/projects/ov21_0226/dataset_order_202207/results/1a_q_behavior_results.csv", 
+pheno1aq_behavior <- fread("/groups/umcg-lifelines/tmp02/projects/ov21_0226/dataset_order_202207/results/1a_q_behavior_results.csv", 
 	sep=",", header=TRUE)
 pheno1aq_behavior <- as.data.frame(pheno1aq_behavior)
 
 # Wave 2
-pheno2aq_child <- fread("/groups/umcg-lifelines/tmp01/projects/ov21_0226/dataset_order_202207/results/2a_q_child_results.csv", 
+pheno2aq_child <- fread("/groups/umcg-lifelines/tmp02/projects/ov21_0226/dataset_order_202207/results/2a_q_child_results.csv", 
 	sep=",", header=TRUE)
 pheno2aq_child <- as.data.frame(pheno2aq_child)
 # Trimming whitespace from column names
 pheno2aq_child <- setNames(pheno2aq_child, trimws(names(pheno2aq_child)))
 
 # Wave 3
-pheno3aq_child <- fread("/groups/umcg-lifelines/tmp01/projects/ov21_0226/dataset_order_202207/results/3a_q_child_results.csv", 
+pheno3aq_child <- fread("/groups/umcg-lifelines/tmp02/projects/ov21_0226/dataset_order_202207/results/3a_q_child_results.csv", 
 	sep=",", header=TRUE)
 pheno3aq_child <- as.data.frame(pheno3aq_child)
 
@@ -924,11 +916,11 @@ print(nrow(cbcl_w3)) #468
 length(unique(cbcl_w3$project_pseudo_id))
 
 # Save into separate data frames
-write.table(cbcl_w1,"/groups/umcg-lifelines/tmp01/projects/ov21_0226/lalajaasko/dfs/cbcl_w1.csv",
+write.table(cbcl_w1,"/groups/umcg-lifelines/tmp02/projects/ov21_0226/lalajaasko/Cog_NonCog/OUTPUT/data/cbcl_w1.csv",
 	sep=",",row.names=FALSE,quote=FALSE)
-write.table(cbcl_w2,"/groups/umcg-lifelines/tmp01/projects/ov21_0226/lalajaasko/dfs/cbcl_w2.csv",
+write.table(cbcl_w2,"/groups/umcg-lifelines/tmp02/projects/ov21_0226/lalajaasko/Cog_NonCog/OUTPUT/data/cbcl_w2.csv",
 	sep=",",row.names=FALSE,quote=FALSE)
-write.table(cbcl_w3,"/groups/umcg-lifelines/tmp01/projects/ov21_0226/lalajaasko/dfs/cbcl_w3.csv",
+write.table(cbcl_w3,"/groups/umcg-lifelines/tmp02/projects/ov21_0226/lalajaasko/Cog_NonCog/OUTPUT/data/cbcl_w3.csv",
 	sep=",",row.names=FALSE,quote=FALSE)
 
 #######################################################################	

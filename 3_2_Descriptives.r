@@ -1,27 +1,18 @@
-#########################################################################
-# Date: November 2024														 
-# Description: Generating descriptives						
-#########################################################################
-
-module load RPlus
-R
-
 library(dplyr)
 library(data.table)
 library(ggplot2)
 library(ggridges)
 library(tidyr)
-install.packages("writexl")
 library(writexl)
 
 #########################################################################
 
 # Full data frame
-final_df <- fread("/groups/umcg-lifelines/tmp02/projects/ov21_0226/lalajaasko/dfs/final_df.csv", 
+final_df <- fread("/groups/umcg-lifelines/tmp02/projects/ov21_0226/lalajaasko/Cog_NonCog/OUTPUT/data/final_df.csv", 
 	sep=",", header=TRUE)
 
 # Define output directory 
-output_dir <- "/groups/umcg-lifelines/tmp02/projects/ov21_0226/lalajaasko/descriptives/"
+output_dir <- "/groups/umcg-lifelines/tmp02/projects/ov21_0226/lalajaasko/Cog_NonCog/OUTPUT/stats/"
 
 #########################################################################
 
@@ -107,17 +98,15 @@ for (sample in samples) {
       geom_density(aes(x = .data[[raw_col]], fill = "Raw"), alpha = 0.4) +
       geom_density(aes(x = .data[[std_col]], fill = "Standardised"), alpha = 0.4, linetype = "dotted") +
       scale_fill_manual(values = c("Raw" = "blue", "Standardised" = "orange")) +
-      labs(
-        x = "Score",
-        y = "Density",
-		axis.text.x = element_text(size = 12),  # x-axis labels
+      labs(x = "Score", y = "Density") +
+      theme_minimal() +
+	  theme(
+	  	axis.text.x = element_text(size = 12),  # x-axis labels
 		axis.text.y = element_text(size = 12),                         # y-axis labels
 		axis.title.y = element_text(size = 12),                        # y-axis title
 		legend.text = element_text(size = 12),                         # legend labels
 		legend.title = element_text(size = 12),                        # legend title
-
-      ) +
-      theme_minimal()
+		)
     
     # Save the plot
     filename <- paste0(output_dir, "density_", sample, "_", behavior, ".png")
@@ -128,10 +117,10 @@ for (sample in samples) {
 ## DENSITY PLOTS FOR PGI VARIABLES
 
 # Define the PGI variables to plot and their corresponding parental variables
-pgi_vars <- c("ea4_pgi", "ea3cog_pgi", "ea3noncog_pgi")
-pgi_sum_vars <- c("ea4_pgi_sum", "ea3cog_pgi_sum", "ea3noncog_pgi_sum")  # Corresponding parental PGI variables
-pgi_labels <- c("Offspring EA PGI", "Offspring EA Cognitive PGI", "Offspring EA Non-Cognitive PGI")  # Clean labels for x-axis
-pgi_sum_labels <- c("Parental EA PGI Decile", "Parental EA Cognitive PGI Decile", "Parental EA Non-Cognitive PGI Decile")  # Clean labels for y-axis
+pgi_vars <- c("pgi_EA4", "pgi_EA3Cog", "pgi_EA3NonCog")
+pgi_sum_vars <- c("pgi_sum_EA4", "pgi_sum_EA3Cog", "pgi_sum_EA3NonCog")
+pgi_labels <- c("Offspring EA PGI", "Offspring EA Cognitive PGI", "Offspring EA Non-Cognitive PGI")
+pgi_sum_labels <- c("Parental EA PGI Decile", "Parental EA Cognitive PGI Decile", "Parental EA Non-Cognitive PGI Decile")
 
 # Loop over each sample and each PGI variable
 for (sample in samples) {

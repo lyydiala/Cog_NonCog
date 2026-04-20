@@ -1,6 +1,7 @@
-# Load necessary library
-install.packages("pwrss")
 library(pwrss)
+library(lmtest)
+library(sandwich)
+library(lme4)
 
 # Effect sizes from literature (beta1)
 effect_ntr_direct_noncog <- 0.1842
@@ -31,14 +32,6 @@ result_i <- pwrss.t.reg(beta1 = i, k = num_predictors_max,
 }
 
 ###################################################
-
-# Load libraries
-install.packages("lmtest")
-install.packages("sandwich")
-install.packages("lme4")
-library(lmtest)
-library(sandwich)
-library(lme4)
 
 # Set parameters
 set.seed(123)
