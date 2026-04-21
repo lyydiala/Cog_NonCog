@@ -47,9 +47,9 @@ overlay_histogram_date(final_df, "date_of_birth_f", "hist_age_dad.png")
 ## HISTOGRAM: NUMBER OF CHILDREN AND AGE AT INCLUSION BY SOURCE
 
 overlay_histogram_num <- function(df, num_column, file_name, x_label) {
-  ggplot(df, aes(x = .data[[num_column]], fill = source)) + # Fill based on source
-    geom_histogram(binwidth = 1, color = "black", alpha = 0.5) +  # Transparency for overlay
-    scale_fill_manual(values = c("cbcl" = "green", "ysr" = "purple")) + # Custom colors for source
+  ggplot(df, aes(x = .data[[num_column]], fill = source)) +
+    geom_histogram(binwidth = 1, color = "black", alpha = 0.5) +
+    scale_fill_manual(values = c("cbcl" = "green", "ysr" = "purple")) +
 	scale_x_continuous(
 	  breaks = scales::breaks_pretty(n = 5)
     ) +
@@ -101,11 +101,11 @@ for (sample in samples) {
       labs(x = "Score", y = "Density") +
       theme_minimal() +
 	  theme(
-	  	axis.text.x = element_text(size = 12),  # x-axis labels
-		axis.text.y = element_text(size = 12),                         # y-axis labels
-		axis.title.y = element_text(size = 12),                        # y-axis title
-		legend.text = element_text(size = 12),                         # legend labels
-		legend.title = element_text(size = 12),                        # legend title
+	  	axis.text.x = element_text(size = 12),
+		axis.text.y = element_text(size = 12),
+		axis.title.y = element_text(size = 12),
+		legend.text = element_text(size = 12),
+		legend.title = element_text(size = 12),
 		)
     
     # Save the plot
@@ -116,30 +116,38 @@ for (sample in samples) {
 
 ## DENSITY PLOTS FOR PGI VARIABLES
 
-# Define the PGI variables to plot and their corresponding parental variables
-pgi_vars <- c("pgi_EA4", "pgi_EA3Cog", "pgi_EA3NonCog")
-pgi_sum_vars <- c("pgi_sum_EA4", "pgi_sum_EA3Cog", "pgi_sum_EA3NonCog")
-pgi_labels <- c("Offspring EA PGI", "Offspring EA Cognitive PGI", "Offspring EA Non-Cognitive PGI")
-pgi_sum_labels <- c("Parental EA PGI Decile", "Parental EA Cognitive PGI Decile", "Parental EA Non-Cognitive PGI Decile")
+# Define the PGI variables to plot (one plot per trait x method combination)
+pgi_vars     <- c("pgi_EA3Cog_SBayesR",  "pgi_EA3Cog_SBayesRC",
+                  "pgi_EA3NonCog_SBayesR", "pgi_EA3NonCog_SBayesRC",
+                  "pgi_EA4_SBayesR",      "pgi_EA4_SBayesRC")
+pgi_sum_vars <- c("pgi_sum_EA3Cog_SBayesR",  "pgi_sum_EA3Cog_SBayesRC",
+                  "pgi_sum_EA3NonCog_SBayesR", "pgi_sum_EA3NonCog_SBayesRC",
+                  "pgi_sum_EA4_SBayesR",      "pgi_sum_EA4_SBayesRC")
+pgi_labels     <- c("Offspring EA Cognitive PGI (SBayesR)",    "Offspring EA Cognitive PGI (SBayesRC)",
+                    "Offspring EA Non-Cognitive PGI (SBayesR)", "Offspring EA Non-Cognitive PGI (SBayesRC)",
+                    "Offspring EA PGI (SBayesR)",               "Offspring EA PGI (SBayesRC)")
+pgi_sum_labels <- c("Parental EA Cognitive PGI Decile (SBayesR)",    "Parental EA Cognitive PGI Decile (SBayesRC)",
+                    "Parental EA Non-Cognitive PGI Decile (SBayesR)", "Parental EA Non-Cognitive PGI Decile (SBayesRC)",
+                    "Parental EA PGI Decile (SBayesR)",               "Parental EA PGI Decile (SBayesRC)")
 
 # Loop over each sample and each PGI variable
 for (sample in samples) {
   for (i in seq_along(pgi_vars)) {
-    pgi_var <- pgi_vars[i]
+    pgi_var     <- pgi_vars[i]
     pgi_sum_var <- pgi_sum_vars[i]
-    pgi_label <- pgi_labels[i]
+    pgi_label     <- pgi_labels[i]
     pgi_sum_label <- pgi_sum_labels[i]
     
-    # Filter data for the current sample and create deciles for the specific parental PGI variable
+    # Filter data for the current sample and create deciles for the parental PGI variable
     sample_df <- final_df %>%
       filter(source == sample) %>%
-      mutate(decile_var = ntile(.data[[pgi_sum_var]], 10))  # Create decile for the specific parental PGI variable
+      mutate(decile_var = ntile(.data[[pgi_sum_var]], 10))
     
     # Create the density ridge plot
     density_plot <- ggplot(sample_df, aes(x = .data[[pgi_var]], y = as.factor(decile_var), fill = as.numeric(decile_var))) +
       geom_density_ridges(scale = 3, rel_min_height = 0.01) +
-      scale_y_discrete(name = pgi_sum_label) +  # Use cleaner y-axis label
-      scale_x_continuous(name = pgi_label) +    # Use cleaner x-axis label
+      scale_y_discrete(name = pgi_sum_label) +
+      scale_x_continuous(name = pgi_label) +
       scale_fill_gradient(low = "darkgreen", high = "lightgreen") +
       theme_minimal() +
       theme(
@@ -261,19 +269,19 @@ for (sample in samples) {
   
   # Calculate summary statistics for raw variables
   summary_raw <- calculate_summary_stats(sample_df, variables_raw)
-  summary_list[[paste(sample, "Raw")]] <- summary_raw  # Store in list
+  summary_list[[paste(sample, "Raw")]] <- summary_raw
   
   # Calculate summary statistics for standardized variables
   summary_std <- calculate_summary_stats(sample_df, variables_std)
-  summary_list[[paste(sample, "Standardized")]] <- summary_std  # Store in list
+  summary_list[[paste(sample, "Standardized")]] <- summary_std
     
   # Calculate summary statistics for raw variables by female
   summary_raw_female <- calculate_summary_stats_by_female(sample_df, variables_raw)
-  summary_list[[paste(sample, "Raw by female")]] <- summary_raw_female  # Store in list
+  summary_list[[paste(sample, "Raw by female")]] <- summary_raw_female
   
   # Calculate summary statistics for standardized variables by female
   summary_std_female <- calculate_summary_stats_by_female(sample_df, variables_std)
-  summary_list[[paste(sample, "Standardized by female")]] <- summary_std_female  # Store in list
+  summary_list[[paste(sample, "Standardized by female")]] <- summary_std_female
   }
 
 # Define the output file path
@@ -284,4 +292,4 @@ write_xlsx(summary_list, path = output_file)
 
 #########################################################################
 
-# END 
+# END

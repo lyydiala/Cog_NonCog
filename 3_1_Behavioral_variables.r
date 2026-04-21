@@ -48,9 +48,12 @@ final_df <- final_df %>%
     date_of_birth_f, year_of_birth_f, month_of_birth_f, n_child_f, years_at_birth_f,
 
     # Polygenic Indices
-    pgi_EA4, pgi_sum_EA4,
-    pgi_EA3NonCog, pgi_sum_EA3NonCog,
-    pgi_EA3Cog, pgi_sum_EA3Cog,
+    pgi_EA3Cog_SBayesR,  pgi_sum_EA3Cog_SBayesR,
+    pgi_EA3Cog_SBayesRC, pgi_sum_EA3Cog_SBayesRC,
+    pgi_EA3NonCog_SBayesR,  pgi_sum_EA3NonCog_SBayesR,
+    pgi_EA3NonCog_SBayesRC, pgi_sum_EA3NonCog_SBayesRC,
+    pgi_EA4_SBayesR,  pgi_sum_EA4_SBayesR,
+    pgi_EA4_SBayesRC, pgi_sum_EA4_SBayesRC,
 
     # PCs
     PC1, PC2, PC3, PC4, PC5, PC6, PC7, PC8, PC9, PC10,
@@ -69,4 +72,3 @@ write.table(final_df,"/groups/umcg-lifelines/tmp02/projects/ov21_0226/lalajaasko
 	sep=",",row.names=FALSE,quote=FALSE)
 
 #########################################################################
-

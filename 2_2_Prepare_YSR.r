@@ -62,7 +62,7 @@ withdrawn_w2 <- pheno2aq_youth[c("ysr_hobbies_ach_q_05",
 	"ysr_lowenergy_ach_q_109", #cbcl_102 ysr_109
 	"ysr_unhappy_ach_q_110", #cbcl_103 ysr_110
 	"ysr_withdrawn_ach_q_118")] #cbcl_111 ysr_118
-withdrawn_w1 <- as.data.frame(sapply(withdrawn_w1,as.numeric))
+withdrawn_w2 <- as.data.frame(sapply(withdrawn_w2,as.numeric))
 vars_to_change <- c("ysr_hobbies_ach_q_05",
 	"ysr_alone_ach_q_42",
 	"ysr_refusetalk_ach_q_72",
@@ -88,7 +88,7 @@ withdrawn_w3 <- pheno3aq_youth[c("ysr_hobbies_ach_q_05",
 	"ysr_lowenergy_ach_q_109", #cbcl_102 ysr_109
 	"ysr_unhappy_ach_q_110", #cbcl_103 ysr_110
 	"ysr_withdrawn_ach_q_118")] #cbcl_111 ysr_118
-withdrawn_w1 <- as.data.frame(sapply(withdrawn_w1,as.numeric))
+withdrawn_w3 <- as.data.frame(sapply(withdrawn_w3,as.numeric))
 vars_to_change <- c("ysr_hobbies_ach_q_05",
 	"ysr_alone_ach_q_42",
 	"ysr_refusetalk_ach_q_72",

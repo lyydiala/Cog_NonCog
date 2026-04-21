@@ -21,34 +21,34 @@ Rscript -e '
   if (length(missing) > 0) install.packages(missing, lib=Sys.getenv("R_LIBS_USER"), repos="https://cloud.r-project.org")
 '
 
-# echo "--- 0_1_Prepare_PGI_data ---"
-# bash 0_1_Prepare_PGI_data.sh
+echo "--- 1_1_Prepare_PGI_data ---"
+bash 1_1_Prepare_PGI_data.sh
 
-# echo "--- 1_1_Prepare_PGIs ---"
-# Rscript 1_1_Prepare_PGIs.r
+echo "--- 1_2_Prepare_PGIs ---"
+Rscript 1_2_Prepare_PGIs.r
 
-# echo "--- 1_2_Prepare_CBCL ---"
-# Rscript 1_2_Prepare_CBCL.r
+echo "--- 2_1_Prepare_CBCL ---"
+Rscript 2_1_Prepare_CBCL.r
 
-# echo "--- 1_3_Prepare_YSR ---"
-# Rscript 1_3_Prepare_YSR.r
+echo "--- 2_2_Prepare_YSR ---"
+Rscript 2_2_Prepare_YSR.r
 
-# echo "--- 2_1_Combine_samples ---"
-# Rscript 2_1_Combine_samples.r
+echo "--- 2_3_Combine_samples ---"
+Rscript 2_3_Combine_samples.r
 
-# echo "--- 3_1_Behavioral_variables ---"
-# Rscript 3_1_Behavioral_variables.r
+echo "--- 3_1_Behavioral_variables ---"
+Rscript 3_1_Behavioral_variables.r
 
-# echo "--- 3_2_Descriptives ---"
-# Rscript 3_2_Descriptives.r
+echo "--- 3_2_Descriptives ---"
+Rscript 3_2_Descriptives.r
 
 echo "--- 4_1_OLS_regressions ---"
 Rscript 4_1_OLS_regressions.r
 
+echo "--- 4_2_Results_tables ---"
+Rscript 4_2_Results_tables.R
+
 # echo "--- 5_Power_calculation ---"
 # Rscript 5_Power_calculation.r
- 
-echo "--- 6_Results_tables ---"
-Rscript 6_Results_tables.R
 
 echo "=== Pipeline complete: $(date) ==="

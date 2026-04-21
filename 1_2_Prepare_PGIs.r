@@ -119,7 +119,14 @@ within_fam_ea_pgi <- merge(parent, ea_pgi, by.x = "id", by.y = "IID")
 print(nrow(within_fam_ea_pgi)) #42845
 
 # Remove duplicates: keep row with fewest NAs in PGI columns
-pgi_cols <- c("pgi_EA3Cog", "pgi_sum_EA3Cog", "pgi_EA3NonCog", "pgi_sum_EA3NonCog", "pgi_EA4", "pgi_sum_EA4")
+pgi_cols <- c(
+	"pgi_EA3Cog_SBayesR",  "pgi_sum_EA3Cog_SBayesR",
+	"pgi_EA3Cog_SBayesRC", "pgi_sum_EA3Cog_SBayesRC",
+	"pgi_EA3NonCog_SBayesR",  "pgi_sum_EA3NonCog_SBayesR",
+	"pgi_EA3NonCog_SBayesRC", "pgi_sum_EA3NonCog_SBayesRC",
+	"pgi_EA4_SBayesR",  "pgi_sum_EA4_SBayesR",
+	"pgi_EA4_SBayesRC", "pgi_sum_EA4_SBayesRC"
+)
 
 within_fam_ea_pgi <- within_fam_ea_pgi %>%
 	mutate(n_na = rowSums(is.na(across(all_of(pgi_cols))))) %>%
@@ -144,9 +151,12 @@ within_fam_ea_pgi <- within_fam_ea_pgi %>%
 		date_of_birth_f, year_of_birth_f, month_of_birth_f, n_child_f, years_at_birth_f,
 
 		# Polygenic Indices
-		pgi_EA4, pgi_sum_EA4,
-		pgi_EA3NonCog, pgi_sum_EA3NonCog,
-		pgi_EA3Cog, pgi_sum_EA3Cog,
+		pgi_EA3Cog_SBayesR,  pgi_sum_EA3Cog_SBayesR,
+		pgi_EA3Cog_SBayesRC, pgi_sum_EA3Cog_SBayesRC,
+		pgi_EA3NonCog_SBayesR,  pgi_sum_EA3NonCog_SBayesR,
+		pgi_EA3NonCog_SBayesRC, pgi_sum_EA3NonCog_SBayesRC,
+		pgi_EA4_SBayesR,  pgi_sum_EA4_SBayesR,
+		pgi_EA4_SBayesRC, pgi_sum_EA4_SBayesRC,
 
 		# PCs
 		PC1, PC2, PC3, PC4, PC5, PC6, PC7, PC8, PC9, PC10)
@@ -160,9 +170,7 @@ write.table(within_fam_ea_pgi, "/groups/umcg-lifelines/tmp02/projects/ov21_0226/
 # SAMPLE SIZES WITH GENETIC INFORMATION
 
 # Total number of trios including imputed values
-print(sum(complete.cases(within_fam_ea_pgi[, c("pgi_EA4","pgi_sum_EA4")]))) #42845
-
-# Sjoerd's code: #38908
+print(sum(complete.cases(within_fam_ea_pgi[, c("pgi_EA4_SBayesR","pgi_sum_EA4_SBayesR")]))) #42845
 
 #######################################################################
 

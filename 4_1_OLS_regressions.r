@@ -79,8 +79,6 @@ run_all_regressions <- function(data_sources, raw_vars, rhs_m1, rhs_m2) {
   models
 }
  
-##
- 
 # Collect all models for a source into a flat named list for Excel export
 collect_models_for_export <- function(models, source_name, raw_vars) {
   out <- list()
@@ -95,8 +93,8 @@ collect_models_for_export <- function(models, source_name, raw_vars) {
 }
  
 # Extract regression results across all sources/vars/types into a single data frame
-extract_results <- function(models, raw_vars, predictor_vars, types, data_sources) {
-  predictor_set <- ifelse("pgi_EA4" %in% predictor_vars, "ea4", "ea3")
+extract_results <- function(models, raw_vars, predictor_vars, types, data_sources, predictor_type) {
+  predictor_set <- ifelse(grepl("EA4", predictor_type), "ea4", "ea3")
   results_list  <- list()
  
   for (source_name in names(data_sources)) {
@@ -137,10 +135,14 @@ outcome_levels <- c("Internalizing", "Anxious", "Withdrawn", "Somatic",
                     "Social", "Thought", "Attention", "Rule-Breaking",
                     "Aggressive", "Externalizing")
  
+# Plot labels: no method suffix — clean display names only
 predictor_labels <- c(
-  "pgi_EA3Cog"    = "EA Cog PGI",
-  "pgi_EA3NonCog" = "EA NonCog PGI",
-  "pgi_EA4"       = "EA PGI"
+  "pgi_EA3Cog_SBayesR"    = "EA Cog PGI",
+  "pgi_EA3Cog_SBayesRC"   = "EA Cog PGI",
+  "pgi_EA3NonCog_SBayesR"  = "EA NonCog PGI",
+  "pgi_EA3NonCog_SBayesRC" = "EA NonCog PGI",
+  "pgi_EA4_SBayesR"       = "EA PGI",
+  "pgi_EA4_SBayesRC"      = "EA PGI"
 )
  
 # Classify outcomes into one of four groups based on m1/m2 significance
@@ -221,7 +223,7 @@ generate_pgi_plots <- function(results_df, samples, types, terms, output_dir, co
         ungroup() %>%
         left_join(outcome_groups, by = "outcome")
  
-      # Original significant/insignificant figures (unchanged)
+      # Significant/insignificant figures
       for (sig_status in c(TRUE, FALSE)) {
         df <- plot_df %>% filter(any_significant == sig_status)
         sig_label <- ifelse(sig_status, "significant", "insignificant")
@@ -229,7 +231,7 @@ generate_pgi_plots <- function(results_df, samples, types, terms, output_dir, co
                   paste0(figures_dir, sample, file_suffix, "_", title_suffix, "_", type, "_", sig_label, ".png"))
       }
  
-      # New group figures: direct, total, odd, insignificant
+      # Group figures: direct, total, odd, insignificant
       for (grp in c("direct", "total", "odd", "insignificant")) {
         df <- plot_df %>% filter(group == grp)
         save_plot(df, ylim, colors,
@@ -361,19 +363,22 @@ interaction_rhs <- function(predictor_vars, control_vars, controls) {
  
 #########################################################################
  
-# RUN FOR BOTH EA4 AND EA3
+# RUN FOR ALL TRAIT x METHOD COMBINATIONS
  
-for (predictor_type in c("EA4", "EA3")) {
+for (predictor_type in c("EA4_SBayesR", "EA4_SBayesRC", "EA3_SBayesR", "EA3_SBayesRC")) {
  
   cat(sprintf("\n=== Running analysis for %s ===\n", predictor_type))
  
   # DEFINE PREDICTORS
-  if (predictor_type == "EA4") {
-    predictor_vars_m1 <- c("pgi_EA4")
-    predictor_vars_m2 <- c("pgi_EA4", "pgi_sum_EA4")
+  if (grepl("EA4", predictor_type)) {
+    predictor_vars_m1 <- c(paste0("pgi_EA4_",       predictor_type |> sub("EA4_", "", x = _)))
+    predictor_vars_m2 <- c(paste0("pgi_EA4_",       predictor_type |> sub("EA4_", "", x = _)),
+                           paste0("pgi_sum_EA4_",   predictor_type |> sub("EA4_", "", x = _)))
   } else {
-    predictor_vars_m1 <- c("pgi_EA3NonCog", "pgi_EA3Cog")
-    predictor_vars_m2 <- c("pgi_EA3NonCog", "pgi_EA3Cog", "pgi_sum_EA3NonCog", "pgi_sum_EA3Cog")
+    method <- sub("EA3_", "", predictor_type)
+    predictor_vars_m1 <- c(paste0("pgi_EA3NonCog_", method), paste0("pgi_EA3Cog_", method))
+    predictor_vars_m2 <- c(paste0("pgi_EA3NonCog_", method), paste0("pgi_EA3Cog_", method),
+                           paste0("pgi_sum_EA3NonCog_", method), paste0("pgi_sum_EA3Cog_", method))
   }
  
   predictors_m1 <- paste(predictor_vars_m1, collapse = " + ")
@@ -396,7 +401,7 @@ for (predictor_type in c("EA4", "EA3")) {
     export_models_to_excel(collect_models_for_export(models, source_name, raw_vars), file_paths[[source_name]])
   }
  
-  results_df <- extract_results(models, raw_vars, predictor_vars_m1, types, data_sources)
+  results_df <- extract_results(models, raw_vars, predictor_vars_m1, types, data_sources, predictor_type)
  
   #########################################################################
  
@@ -405,7 +410,7 @@ for (predictor_type in c("EA4", "EA3")) {
   generate_pgi_plots(
     results_df = results_df, samples = samples, types = types,
     terms = predictor_vars_m1, output_dir = output_dir,
-    colors = if (predictor_type == "EA4") c("EA PGI" = "mediumpurple3")
+    colors = if (grepl("EA4", predictor_type)) c("EA PGI" = "mediumpurple3")
              else c("EA Cog PGI" = "lightskyblue3", "EA NonCog PGI" = "orchid4"),
     title_suffix = predictor_type
   )
@@ -481,7 +486,7 @@ for (predictor_type in c("EA4", "EA3")) {
     export_models_to_excel(collect_models_for_export(models_gender, source_name, raw_vars), file_paths_gender[[source_name]])
   }
  
-  results_df_gender <- extract_results(models_gender, raw_vars, predictor_vars_m1, types, data_sources_gender)
+  results_df_gender <- extract_results(models_gender, raw_vars, predictor_vars_m1, types, data_sources_gender, predictor_type)
  
   #########################################################################
  
@@ -490,7 +495,7 @@ for (predictor_type in c("EA4", "EA3")) {
   generate_pgi_plots(
     results_df = results_df_gender, samples = samples_gender, types = types,
     terms = predictor_vars_m1, output_dir = output_dir,
-    colors = if (predictor_type == "EA4") c("EA PGI" = "mediumpurple3")
+    colors = if (grepl("EA4", predictor_type)) c("EA PGI" = "mediumpurple3")
              else c("EA Cog PGI" = "lightskyblue3", "EA NonCog PGI" = "orchid4"),
     title_suffix = predictor_type, file_suffix = "_sex"
   )
