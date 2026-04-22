@@ -478,26 +478,26 @@ build_t9 <- function(wb, wald_ea4_file, wald_ea3_file, method) {
 
 # ── MAIN: loop over methods ────────────────────────────────────────────────────
 
-for (method in c("SBayesR", "SBayesRC")) {
+for (method in c("SBayesR")) {
 
   cat(sprintf("\n=== Building tables for %s ===\n", method))
 
-  ea4_cbcl             <- read_raw(file.path(raw_dir, paste0("full_cbcl_EA4_",         method, ".xlsx")))
-  ea4_ysr              <- read_raw(file.path(raw_dir, paste0("full_ysr_EA4_",          method, ".xlsx")))
-  ea3_cbcl             <- read_raw(file.path(raw_dir, paste0("full_cbcl_EA3_",         method, ".xlsx")))
-  ea3_ysr              <- read_raw(file.path(raw_dir, paste0("full_ysr_EA3_",          method, ".xlsx")))
-  girls_cbcl_ea4       <- read_raw(file.path(raw_dir, paste0("girls_cbcl_EA4_",        method, ".xlsx")))
-  boys_cbcl_ea4        <- read_raw(file.path(raw_dir, paste0("boys_cbcl_EA4_",         method, ".xlsx")))
-  girls_cbcl_ea3       <- read_raw(file.path(raw_dir, paste0("girls_cbcl_EA3_",        method, ".xlsx")))
-  boys_cbcl_ea3        <- read_raw(file.path(raw_dir, paste0("boys_cbcl_EA3_",         method, ".xlsx")))
-  girls_ysr_ea4        <- read_raw(file.path(raw_dir, paste0("girls_ysr_EA4_",         method, ".xlsx")))
-  boys_ysr_ea4         <- read_raw(file.path(raw_dir, paste0("boys_ysr_EA4_",          method, ".xlsx")))
-  girls_ysr_ea3        <- read_raw(file.path(raw_dir, paste0("girls_ysr_EA3_",         method, ".xlsx")))
-  boys_ysr_ea3         <- read_raw(file.path(raw_dir, paste0("boys_ysr_EA3_",          method, ".xlsx")))
-  interaction_cbcl_ea4 <- read_raw(file.path(raw_dir, paste0("interaction_cbcl_EA4_",  method, ".xlsx")))
-  interaction_ysr_ea4  <- read_raw(file.path(raw_dir, paste0("interaction_ysr_EA4_",   method, ".xlsx")))
-  interaction_cbcl_ea3 <- read_raw(file.path(raw_dir, paste0("interaction_cbcl_EA3_",  method, ".xlsx")))
-  interaction_ysr_ea3  <- read_raw(file.path(raw_dir, paste0("interaction_ysr_EA3_",   method, ".xlsx")))
+  ea4_cbcl             <- read_raw(file.path(raw_dir, "full_cbcl_EA4.xlsx"))
+  ea4_ysr              <- read_raw(file.path(raw_dir, "full_ysr_EA4.xlsx"))
+  ea3_cbcl             <- read_raw(file.path(raw_dir, "full_cbcl_EA3.xlsx"))
+  ea3_ysr              <- read_raw(file.path(raw_dir, "full_ysr_EA3.xlsx"))
+  girls_cbcl_ea4       <- read_raw(file.path(raw_dir, "girls_cbcl_EA4.xlsx"))
+  boys_cbcl_ea4        <- read_raw(file.path(raw_dir, "boys_cbcl_EA4.xlsx"))
+  girls_cbcl_ea3       <- read_raw(file.path(raw_dir, "girls_cbcl_EA3.xlsx"))
+  boys_cbcl_ea3        <- read_raw(file.path(raw_dir, "boys_cbcl_EA3.xlsx"))
+  girls_ysr_ea4        <- read_raw(file.path(raw_dir, "girls_ysr_EA4.xlsx"))
+  boys_ysr_ea4         <- read_raw(file.path(raw_dir, "boys_ysr_EA4.xlsx"))
+  girls_ysr_ea3        <- read_raw(file.path(raw_dir, "girls_ysr_EA3.xlsx"))
+  boys_ysr_ea3         <- read_raw(file.path(raw_dir, "boys_ysr_EA3.xlsx"))
+  interaction_cbcl_ea4 <- read_raw(file.path(raw_dir, "interaction_cbcl_EA4.xlsx"))
+  interaction_ysr_ea4  <- read_raw(file.path(raw_dir, "interaction_ysr_EA4.xlsx"))
+  interaction_cbcl_ea3 <- read_raw(file.path(raw_dir, "interaction_cbcl_EA3.xlsx"))
+  interaction_ysr_ea3  <- read_raw(file.path(raw_dir, "interaction_ysr_EA3.xlsx"))
 
   wb <- createWorkbook()
 
@@ -510,11 +510,11 @@ for (method in c("SBayesR", "SBayesRC")) {
   cat("Building sheet 7...\n"); build_t7(wb, interaction_cbcl_ea4, interaction_ysr_ea4, method)
   cat("Building sheet 8...\n"); build_t8(wb, interaction_cbcl_ea3, interaction_ysr_ea3, method)
   cat("Building sheet 9...\n"); build_t9(wb,
-    file.path(raw_dir, paste0("wald_test_results_EA4_", method, ".xlsx")),
-    file.path(raw_dir, paste0("wald_test_results_EA3_", method, ".xlsx")),
+    file.path(raw_dir, "wald_test_results_EA4.xlsx"),
+    file.path(raw_dir, "wald_test_results_EA3.xlsx"),
     method)
 
-  out_file <- file.path(out_dir, paste0("Results_", method, ".xlsx"))
+  out_file <- file.path(out_dir, "Results.xlsx")
   saveWorkbook(wb, out_file, overwrite = TRUE)
   cat(sprintf("Done! Saved: %s\n", out_file))
 
